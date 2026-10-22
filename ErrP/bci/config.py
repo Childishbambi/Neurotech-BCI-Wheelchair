@@ -590,7 +590,29 @@ class HingeTaskConfig:
 
 @dataclass(frozen=True)
 class MentalCommandModelConfig:
+    # "eegnet" trains a compact CNN directly on (channels, samples) windows.
+    # Use "riemann_lda" to reproduce the original covariance/tangent-space
+    # baseline without changing any task code.
+    classifier_type: str = "eegnet"
     cov_estimator: str = "oas"
+
+    # EEGNet training and architecture parameters.  Defaults are sized for
+    # the DSI-7's seven channels and the 1-second windows used by the tasks.
+    cnn_epochs: int = 40
+    cnn_batch_size: int = 32
+    cnn_learning_rate: float = 1e-3
+    cnn_weight_decay: float = 1e-4
+    cnn_dropout: float = 0.5
+    cnn_f1: int = 8
+    cnn_depth_multiplier: int = 2
+    cnn_f2: int = 16
+    cnn_temporal_kernel: int = 64
+    cnn_separable_kernel: int = 16
+    cnn_validation_fraction: float = 0.2
+    cnn_patience: int = 7
+    cnn_random_state: int = 42
+    cnn_device: str = "auto"
+    cnn_verbose: bool = False
 
 
 @dataclass(frozen=True)

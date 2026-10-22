@@ -316,6 +316,36 @@ def find_stim_channel(raw: mne.io.BaseRaw) -> str:
 
 
 def make_mi_classifier(model_cfg: MentalCommandModelConfig) -> Pipeline:
+    classifier_type = str(model_cfg.classifier_type).strip().lower()
+    if classifier_type == "eegnet":
+        # Keep the original Riemannian-LDA path usable on systems without
+        # PyTorch; the CNN dependency is only imported when selected.
+        from eegnet_classifier import EEGNetClassifier
+
+        return Pipeline([
+            ("clf", EEGNetClassifier(
+                epochs=int(model_cfg.cnn_epochs),
+                batch_size=int(model_cfg.cnn_batch_size),
+                learning_rate=float(model_cfg.cnn_learning_rate),
+                weight_decay=float(model_cfg.cnn_weight_decay),
+                dropout=float(model_cfg.cnn_dropout),
+                f1=int(model_cfg.cnn_f1),
+                depth_multiplier=int(model_cfg.cnn_depth_multiplier),
+                f2=int(model_cfg.cnn_f2),
+                temporal_kernel=int(model_cfg.cnn_temporal_kernel),
+                separable_kernel=int(model_cfg.cnn_separable_kernel),
+                validation_fraction=float(model_cfg.cnn_validation_fraction),
+                patience=int(model_cfg.cnn_patience),
+                random_state=int(model_cfg.cnn_random_state),
+                device=str(model_cfg.cnn_device),
+                verbose=bool(model_cfg.cnn_verbose),
+            )),
+        ])
+    if classifier_type != "riemann_lda":
+        raise ValueError(
+            "Unknown motor-imagery classifier_type "
+            f"{model_cfg.classifier_type!r}; expected 'eegnet' or 'riemann_lda'."
+        )
     return Pipeline([
         ("cov", Covariances(estimator=model_cfg.cov_estimator)),
         ("ts", TangentSpace(metric="riemann")),
@@ -513,7 +543,7 @@ def _shared_model_signature(
     target_channel_names: list[str] | tuple[str, ...],
 ) -> tuple[str, dict]:
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "data_dir": str(Path(data_dir).expanduser().resolve()),
         "edf_glob": str(edf_glob),
         "calibrate_on_participant": str(calibrate_on_participant),
@@ -539,7 +569,22 @@ def _shared_model_signature(
             "right_code": int(stim_cfg.right_code),
         },
         "model_cfg": {
+            "classifier_type": str(model_cfg.classifier_type),
             "cov_estimator": str(model_cfg.cov_estimator),
+            "cnn_epochs": int(model_cfg.cnn_epochs),
+            "cnn_batch_size": int(model_cfg.cnn_batch_size),
+            "cnn_learning_rate": float(model_cfg.cnn_learning_rate),
+            "cnn_weight_decay": float(model_cfg.cnn_weight_decay),
+            "cnn_dropout": float(model_cfg.cnn_dropout),
+            "cnn_f1": int(model_cfg.cnn_f1),
+            "cnn_depth_multiplier": int(model_cfg.cnn_depth_multiplier),
+            "cnn_f2": int(model_cfg.cnn_f2),
+            "cnn_temporal_kernel": int(model_cfg.cnn_temporal_kernel),
+            "cnn_separable_kernel": int(model_cfg.cnn_separable_kernel),
+            "cnn_validation_fraction": float(model_cfg.cnn_validation_fraction),
+            "cnn_patience": int(model_cfg.cnn_patience),
+            "cnn_random_state": int(model_cfg.cnn_random_state),
+            "cnn_device": str(model_cfg.cnn_device),
         },
         "edf_manifest": _edf_manifest(
             data_dir=data_dir,

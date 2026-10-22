@@ -96,6 +96,47 @@ The override keys should match the config object names used by tasks, most commo
 - shared jaw / blink calibration uses the same selected channels
 - if the requested picks are missing from the live stream, the workflow now fails fast instead of silently falling back to other channels
 
+## CNN Motor-Imagery Model
+
+The shared left/right motor-imagery model now defaults to a compact EEGNet CNN.
+It consumes the same filtered windows used by the original model, so all LSL,
+EDF loading, channel selection, artifact rejection, and task code remain
+unchanged.
+
+The default model is configured in `MentalCommandModelConfig`:
+
+```python
+MentalCommandModelConfig(
+    classifier_type="eegnet",
+    cnn_epochs=40,
+    cnn_batch_size=32,
+    cnn_learning_rate=1e-3,
+    cnn_dropout=0.5,
+)
+```
+
+EEGNet expects `(trials, channels, samples)` and learns temporal filters followed
+by a depthwise spatial filter across all seven DSI-7 channels. It exposes the
+same `fit`, `predict`, and `predict_proba` interface as the previous classifier.
+Existing tasks therefore use the CNN automatically.
+
+To run the original model as a baseline, set an orchestrator override:
+
+```python
+shared_config_overrides={
+    "model_cfg": {
+        "classifier_type": "riemann_lda",
+    },
+}
+```
+
+Changing model type or CNN hyperparameters invalidates the shared model cache
+and triggers training on the next run. Install PyTorch before selecting EEGNet:
+
+```bash
+python -m pip install torch
+```
+
 ## Shared Calibration Behavior
 
 The orchestrator prepares shared resources once at startup:
